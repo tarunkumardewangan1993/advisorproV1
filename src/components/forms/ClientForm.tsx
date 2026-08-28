@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { initialActionState } from "@/lib/actions/types";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { FieldError } from "@/components/ui/FieldError";
+import { calculateAge } from "@/lib/dates";
 import type { ActionState } from "@/lib/actions/types";
 
 type ClientDefaults = {
@@ -24,6 +25,7 @@ export function ClientForm({
 }) {
   const [state, formAction] = useActionState(action, initialActionState);
   const dobValue = defaults?.dob ? new Date(defaults.dob).toISOString().slice(0, 10) : "";
+  const [age, setAge] = useState<number | null>(calculateAge(dobValue || null));
 
   return (
     <form action={formAction} className="space-y-4">
@@ -66,8 +68,10 @@ export function ClientForm({
           name="dob"
           type="date"
           defaultValue={dobValue}
+          onChange={(event) => setAge(calculateAge(event.target.value || null))}
           className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+        {age !== null && <p className="mt-1 text-xs text-gray-500">Age: {age} years</p>}
       </div>
 
       <div>

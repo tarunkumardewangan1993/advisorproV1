@@ -5,7 +5,7 @@ import { softDeleteClient, revertClientToLead } from "@/lib/actions/clients";
 import { deletePolicy } from "@/lib/actions/policies";
 import { deleteFund } from "@/lib/actions/funds";
 import { deleteInteraction } from "@/lib/actions/interactions";
-import { formatDate } from "@/lib/dates";
+import { formatDate, calculateAge } from "@/lib/dates";
 import { ConfirmForm } from "@/components/ui/ConfirmForm";
 
 const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -14,6 +14,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const client = await getClientById(id);
   if (!client) notFound();
+  const age = calculateAge(client.dob);
 
   return (
     <div className="space-y-6">
@@ -32,6 +33,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </Link>
       </div>
 
+      {client.dob && (
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+          <p className="text-xs font-medium uppercase text-gray-400">Date of birth</p>
+          <p className="mt-1 text-sm text-gray-700">
+            {formatDate(client.dob)} {age !== null && <span className="text-gray-400">· {age} years old</span>}
+          </p>
+        </div>
+      )}
       {client.address && (
         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
           <p className="text-xs font-medium uppercase text-gray-400">Address</p>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listClients } from "@/lib/data/clients";
+import { calculateAge } from "@/lib/dates";
 
 export default async function ClientsPage() {
   const clients = await listClients();
@@ -27,19 +28,22 @@ export default async function ClientsPage() {
         </p>
       ) : (
         <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-          {clients.map((client) => (
-            <li key={client.id}>
-              <Link href={`/clients/${client.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {client.clientUid} · {client.mobile ?? "no mobile"}
-                  </p>
-                </div>
-                <span className="text-gray-400">›</span>
-              </Link>
-            </li>
-          ))}
+          {clients.map((client) => {
+            const age = calculateAge(client.dob);
+            return (
+              <li key={client.id}>
+                <Link href={`/clients/${client.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{client.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {client.clientUid} · {client.mobile ?? "no mobile"} {age !== null && `· ${age} yrs`}
+                    </p>
+                  </div>
+                  <span className="text-gray-400">›</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
