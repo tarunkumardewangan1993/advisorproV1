@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  ADVISOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum PremiumFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+  SINGLE
+}
+
+enum PolicyStatus {
+  ACTIVE
+  LAPSED
+  MATURED
+  CANCELLED
+}
+
+enum InvestmentType {
+  SIP
+  LUMPSUM
+}
+
+enum FundStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum InteractionType {
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  VISIT
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Counter — transactional business-UID sequence generator.
+// One row per prefix (e.g. "CLIENT", "LEAD"); incremented inside the same
+// transaction as the record it names, so concurrent creates never race, and
+// soft-deleted records free their UID immediately via the partial indexes
+// below (WHERE "deletedAt" IS NULL).
+// ---------------------------------------------------------------------------
+
+model Counter {
+  name  String @id
+  value Int    @default(0)
+
+  @@map("counters")
+}
+
+// ---------------------------------------------------------------------------
+// User — advisors and admins. Logs in with userUid (e.g. ADV001), not email.
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(uuid())
+  userUid      String
+  name         String
+  email        String?
+  mobile       String?
+  passwordHash String
+  role         Role       @default(ADVISOR)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  clients      Client[]          @relation("ClientAdvisor")
+  leads        Lead[]            @relation("LeadAdvisor")
+  policies     InsurancePolicy[] @relation("PolicyAdvisor")
+  mutualFunds  MutualFund[]      @relation("FundAdvisor")
+  interactions Interaction[]     @relation("InteractionAdvisor")
+
+  // True uniqueness on userUid/mobile/email (scoped to non-deleted rows) is
+  // enforced by hand-authored PARTIAL unique indexes in the migration SQL —
+  // Prisma's schema DSL cannot express a WHERE clause on @@unique. See
+  // prisma/migrations/.../migration.sql and DEPLOYMENT.md.
+  @@index([userUid])
+  @@index([mobile])
+  @@index([email])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Lead
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id        String     @id @default(uuid())
+  leadUid   String
+  advisorId String
+  advisor   User       @relation("LeadAdvisor", fields: [advisorId], references: [id])
+
+  name        String
+  email       String?
+  mobile      String?
+  source      String?
+  status      LeadStatus @default(NEW)
+  notes       String?
+  followUpDate DateTime?
+
+  // Set when this lead is converted into a client (real FK, one-to-one).
+  convertedToClientId String? @unique
+  convertedToClient   Client? @relation("LeadConvertedToClient", fields: [convertedToClientId], references: [id])
+
+  // Set when this lead was (re)created by reverting a client back to lead status.
+  revertedFromClientId String? @unique
+  revertedFromClient   Client? @relation("ClientRevertedToLead", fields: [revertedFromClientId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([leadUid])
+  @@index([mobile])
+  @@index([advisorId, deletedAt])
+  @@index([followUpDate])
+  @@map("leads")
+}
+
+// ---------------------------------------------------------------------------
+// Client
+// ---------------------------------------------------------------------------
+
+model Client {
+  id        String @id @default(uuid())
+  clientUid String
+  advisorId String
+  advisor   User   @relation("ClientAdvisor", fields: [advisorId], references: [id])
+
+  name    String
+  email   String?
+  mobile  String?
+  dob     DateTime?
+  address String?
+  notes   String?
+
+  // Inverse side of Lead.convertedToClientId — the lead this client came from.
+  convertedFromLead Lead? @relation("LeadConvertedToClient")
+
+  // Inverse side of Lead.revertedFromClientId — the lead created when this
+  // client was reverted back to lead status.
+  revertedToLead Lead? @relation("ClientRevertedToLead")
+
+  policies     InsurancePolicy[] @relation("PolicyClient")
+  mutualFunds  MutualFund[]      @relation("FundClient")
+  interactions Interaction[]     @relation("InteractionClient")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clientUid])
+  @@index([mobile])
+  @@index([email])
+  @@index([advisorId, deletedAt])
+  @@map("clients")
+}
+
+// ---------------------------------------------------------------------------
+// InsurancePolicy
+// ---------------------------------------------------------------------------
+
+model InsurancePolicy {
+  id        String @id @default(uuid())
+  policyUid String
+
+  clientId String
+  client   Client @relation("PolicyClient", fields: [clientId], references: [id])
+
+  advisorId String
+  advisor   User   @relation("PolicyAdvisor", fields: [advisorId], references: [id])
+
+  policyNumber String
+  insurer      String
+  planName     String
+
+  sumAssured    Decimal @db.Decimal(14, 2)
+  premiumAmount Decimal @db.Decimal(14, 2)
+  premiumFrequency PremiumFrequency @default(YEARLY)
+
+  startDate    DateTime
+  dueDate      DateTime
+  maturityDate DateTime?
+
+  status PolicyStatus @default(ACTIVE)
+  notes  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([policyUid])
+  @@index([advisorId, deletedAt])
+  @@index([clientId])
+  @@index([dueDate])
+  @@map("insurance_policies")
+}
+
+// ---------------------------------------------------------------------------
+// MutualFund
+// ---------------------------------------------------------------------------
+
+model MutualFund {
+  id     String @id @default(uuid())
+  fundUid String
+
+  clientId String
+  client   Client @relation("FundClient", fields: [clientId], references: [id])
+
+  advisorId String
+  advisor   User   @relation("FundAdvisor", fields: [advisorId], references: [id])
+
+  folioNumber String
+  amcName     String
+  schemeName  String
+
+  investmentType InvestmentType @default(SIP)
+  sipAmount      Decimal?       @db.Decimal(14, 2)
+  sipDueDate     DateTime?
+
+  investedAmount Decimal  @db.Decimal(14, 2)
+  currentValue   Decimal? @db.Decimal(14, 2)
+
+  startDate DateTime
+  status    FundStatus @default(ACTIVE)
+  notes     String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([fundUid])
+  @@index([advisorId, deletedAt])
+  @@index([clientId])
+  @@index([sipDueDate])
+  @@map("mutual_funds")
+}
+
+// ---------------------------------------------------------------------------
+// Interaction
+// ---------------------------------------------------------------------------
+
+model Interaction {
+  id String @id @default(uuid())
+
+  clientId String
+  client   Client @relation("InteractionClient", fields: [clientId], references: [id])
+
+  advisorId String
+  advisor   User   @relation("InteractionAdvisor", fields: [advisorId], references: [id])
+
+  type            InteractionType @default(CALL)
+  notes           String
+  interactionDate DateTime
+  followUpDate    DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([advisorId, deletedAt])
+  @@index([clientId])
+  @@index([followUpDate])
+  @@map("interactions")
+}

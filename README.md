@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Advisor Pro
 
-## Getting Started
+Mobile-first CRM for insurance and mutual fund advisors.
 
-First, run the development server:
+**Stack:** Next.js 15 (App Router, webpack) · Tailwind CSS · Serwist PWA · Supabase (Postgres only) · Prisma 6 · NextAuth v5 (Credentials) · Zod · bcryptjs.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Local setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env` and fill in real values (see below).
+3. Run migrations and seed the database:
+   ```bash
+   npx prisma migrate dev --name init
+   npm run db:seed
+   ```
+   This creates the initial admin user: `userUid=ADM001`, `password=ChangeMe123!` — **change it immediately** via Profile after first login.
+4. Start the dev server (PWA/service worker is disabled in dev by design):
+   ```bash
+   npm run dev
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Supabase pooled connection (PgBouncer, port **6543**, `?pgbouncer=true`). Used by the app at runtime. |
+| `DIRECT_URL` | Supabase direct connection (port **5432**). Used only by Prisma Migrate. |
+| `AUTH_SECRET` | Generate with `openssl rand -base64 32`. |
+| `AUTH_TRUST_HOST` | Set to `true` (required on Vercel). |
 
-## Learn More
+## Partial unique indexes (important — one manual step)
 
-To learn more about Next.js, take a look at the following resources:
+Business UIDs, mobile numbers, and emails on `User`/`Client`/`Lead` must be unique **only among non-deleted rows**, so a soft-deleted record's UID/mobile/email is immediately reusable. Prisma's schema DSL cannot express a `WHERE` clause on `@@unique`, so `prisma/schema.prisma` only declares plain (non-unique) `@@index`es for these columns, and the real partial unique indexes are added by hand to the migration SQL:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Generate the migration without applying it:
+   ```bash
+   npx prisma migrate dev --name init --create-only
+   ```
+2. Open the generated `prisma/migrations/<timestamp>_init/migration.sql` and append:
+   ```sql
+   CREATE UNIQUE INDEX "users_uid_active_unique" ON "users" ("userUid") WHERE "deletedAt" IS NULL;
+   CREATE UNIQUE INDEX "users_mobile_active_unique" ON "users" ("mobile") WHERE "deletedAt" IS NULL;
+   CREATE UNIQUE INDEX "users_email_active_unique" ON "users" ("email") WHERE "deletedAt" IS NULL;
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   CREATE UNIQUE INDEX "clients_uid_active_unique" ON "clients" ("clientUid") WHERE "deletedAt" IS NULL;
+   CREATE UNIQUE INDEX "clients_mobile_active_unique" ON "clients" ("mobile") WHERE "deletedAt" IS NULL;
+   CREATE UNIQUE INDEX "clients_email_active_unique" ON "clients" ("email") WHERE "deletedAt" IS NULL;
 
-## Deploy on Vercel
+   CREATE UNIQUE INDEX "leads_uid_active_unique" ON "leads" ("leadUid") WHERE "deletedAt" IS NULL;
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   CREATE UNIQUE INDEX "policies_uid_active_unique" ON "insurance_policies" ("policyUid") WHERE "deletedAt" IS NULL;
+   CREATE UNIQUE INDEX "funds_uid_active_unique" ON "mutual_funds" ("fundUid") WHERE "deletedAt" IS NULL;
+   ```
+3. Apply it:
+   ```bash
+   npx prisma migrate deploy
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Do this once, right after the first `migrate dev --create-only`, before the app goes live with real data.
+
+## Deployment checklist (Vercel + Supabase)
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md).
