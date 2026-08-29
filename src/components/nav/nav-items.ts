@@ -16,7 +16,7 @@ export const PRIMARY_NAV: NavItem[] = [
 
 /** Shown only in the hamburger drawer (mobile) and lower sidebar (desktop). */
 export const SECONDARY_NAV: NavItem[] = [
-  { href: "/reports/expiry", label: "Expiry Report", icon: "📅" },
+  { href: "/reports/expiry", label: "Reports", icon: "📅" },
   { href: "/users", label: "Users", icon: "🛡️", adminOnly: true },
   { href: "/profile", label: "Profile", icon: "⚙️" },
 ];

@@ -7,5 +7,10 @@ export async function getExpiryReport(withinDays: number) {
     listExpiringPolicies(withinDays),
     listExpiringSips(withinDays),
   ]);
-  return { policies, funds };
+
+  return {
+    term: policies.filter((policy) => policy.category === "TERM"),
+    health: policies.filter((policy) => policy.category === "HEALTH"),
+    mutual: funds,
+  };
 }

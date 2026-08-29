@@ -70,7 +70,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               <li key={policy.id} className="flex items-center justify-between py-2.5">
                 <div>
                   <p className="text-sm font-medium text-gray-900">
-                    {policy.insurer} · {policy.planName}
+                    {policy.insurer} · {policy.planName}{" "}
+                    <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${policy.category === "TERM" ? "bg-purple-50 text-purple-700" : "bg-teal-50 text-teal-700"}`}>
+                      {policy.category === "TERM" ? "Term" : "Health"}
+                    </span>
                   </p>
                   <p className="text-xs text-gray-500">
                     {policy.policyUid} · Due {formatDate(policy.dueDate)} · {currency.format(Number(policy.premiumAmount))} · {policy.status}

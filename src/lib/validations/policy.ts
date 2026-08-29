@@ -2,9 +2,11 @@ import { z } from "zod";
 
 export const premiumFrequencyEnum = z.enum(["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY", "SINGLE"]);
 export const policyStatusEnum = z.enum(["ACTIVE", "LAPSED", "MATURED", "CANCELLED"]);
+export const policyCategoryEnum = z.enum(["TERM", "HEALTH"]);
 
 export const policySchema = z.object({
   clientId: z.string().uuid(),
+  category: policyCategoryEnum,
   policyNumber: z.string().trim().min(1, "Policy number is required"),
   insurer: z.string().trim().min(1, "Insurer is required"),
   planName: z.string().trim().min(1, "Plan name is required"),

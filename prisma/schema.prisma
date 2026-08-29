@@ -45,6 +45,11 @@ enum PolicyStatus {
   CANCELLED
 }
 
+enum PolicyCategory {
+  TERM
+  HEALTH
+}
+
 enum InvestmentType {
   SIP
   LUMPSUM
@@ -203,6 +208,7 @@ model InsurancePolicy {
   advisorId String
   advisor   User   @relation("PolicyAdvisor", fields: [advisorId], references: [id])
 
+  category     PolicyCategory @default(TERM)
   policyNumber String
   insurer      String
   planName     String
@@ -226,6 +232,7 @@ model InsurancePolicy {
   @@index([advisorId, deletedAt])
   @@index([clientId])
   @@index([dueDate])
+  @@index([category])
   @@map("insurance_policies")
 }
 

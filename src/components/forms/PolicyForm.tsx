@@ -26,6 +26,14 @@ export function PolicyForm({
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="clientId" value={clientId} />
 
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Category *</label>
+        <select name="category" defaultValue={defaults?.category ?? "TERM"} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm">
+          <option value="TERM">Term Insurance (life cover)</option>
+          <option value="HEALTH">Health Insurance (INC)</option>
+        </select>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Insurer *</label>

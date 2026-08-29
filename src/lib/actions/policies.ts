@@ -28,6 +28,7 @@ export async function createPolicy(_prevState: ActionState, formData: FormData):
         policyUid,
         clientId: client.id,
         advisorId: session.user.id,
+        category: data.category,
         policyNumber: data.policyNumber,
         insurer: data.insurer,
         planName: data.planName,
@@ -59,6 +60,7 @@ export async function updatePolicy(id: string, _prevState: ActionState, formData
   await prisma.insurancePolicy.update({
     where: { id },
     data: {
+      category: data.category,
       policyNumber: data.policyNumber,
       insurer: data.insurer,
       planName: data.planName,
