@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { searchClientsAndLeads } from "@/lib/data/search";
+import { formatDate, calculateAge } from "@/lib/dates";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
@@ -13,7 +14,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <input
           name="q"
           defaultValue={q}
-          placeholder="Search by name, mobile, email, or UID"
+          placeholder="Search by name, mobile, email, UID, policy number, or DOB (YYYY-MM-DD)"
           className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">
@@ -29,16 +30,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               <p className="text-sm text-gray-500">No matching clients.</p>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {results.clients.map((client) => (
-                  <li key={client.id}>
-                    <Link href={`/clients/${client.id}`} className="block py-2.5 text-sm hover:text-blue-600">
-                      <span className="font-medium text-gray-900">{client.name}</span>{" "}
-                      <span className="text-xs text-gray-500">
-                        {client.clientUid} · {client.mobile ?? "no mobile"}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                {results.clients.map((client) => {
+                  const age = calculateAge(client.dob);
+                  return (
+                    <li key={client.id}>
+                      <Link href={`/clients/${client.id}`} className="block py-2.5 text-sm hover:text-blue-600">
+                        <span className="font-medium text-gray-900">{client.name}</span>{" "}
+                        <span className="text-xs text-gray-500">
+                          {client.clientUid} · {client.mobile ?? "no mobile"}
+                          {client.dob && ` · DOB ${formatDate(client.dob)}${age !== null ? ` (${age} yrs)` : ""}`}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
